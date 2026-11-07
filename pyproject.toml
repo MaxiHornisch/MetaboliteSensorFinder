@@ -33,6 +33,7 @@ dependencies = [
 chem = ["rdkit>=2024.3"]
 struct = ["biopython>=1.83", "prolif>=2.0"]
 agent = ["claude-agent-sdk>=0.1"]
+data = ["openpyxl>=3.1"]  # reads the supplied SMILES workbook (msf screen labels)
 dev = ["pytest>=8.2", "pytest-cov>=5.0", "ruff>=0.5", "mypy>=1.10"]
 
 [project.scripts]

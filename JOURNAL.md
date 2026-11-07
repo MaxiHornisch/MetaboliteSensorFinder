@@ -436,3 +436,61 @@ If it beats the evidence-fusion design, it is right and we should say so.
 **Artifacts.** <links>
 
 -->
+
+## 2026-11-07: MVP for the screen, and the final architecture
+
+**Input.** `input/Test_sequences.csv`: 413 rows, 100 proteins, 257 domains, 156 families. Profiled by
+script. 0 rows rejected. **No ligand labels**, so S0 and every real-data metric are blocked.
+See [docs/14-FINAL-ARCHITECTURE.md §5](docs/14-FINAL-ARCHITECTURE.md).
+
+**Built.** `src/msf/screen/` (ingest, runner, metrics, simulate, pipeline), the `msf screen` CLI,
+three unit test files, and `loops/screen-thresholds.yaml` (uncalibrated).
+
+**Results.**
+- Tests: 59 passed, 31 xfailed. Baseline was 43 passed. No `tests/controls/` changes.
+- Simulation S1 on the real domains: 6 of 6 scenarios pass.
+- `msf screen run`: refuses to run, as intended, because no workers are configured.
+
+**Decisions.**
+- Gates use decoy-calibrated values, not raw PSICHIC or Vina scores ([11 §3.1](docs/11-PRIOR-ARCHITECTURE.md)).
+- A DiffDock step that uses AlphaFold DB is future information on benchmark cutoffs (leak L5b). Benchmark runs use experimental or homology structures only. This was not in [12](docs/12-PIPELINE-EXECUTION.md).
+- Short domains (≤ 30 aa) are flagged, not excluded. A length alone does not identify a peptide.
+- Uncalibrated thresholds write `advanced = null`, never `false`.
+
+**Dead ends.**
+- Python was only a Windows Store stub. Installed `uv` and Python 3.11.18 for this project. Local tooling only.
+- My first peptide rule (≤ 30 aa → `peptide_out_of_scope`, excluded) would have removed 28 real EGF-like and similar domains. Caught while reviewing the stats, and replaced with the `short_domain` flag. Tests updated.
+
+**Open.** D-LIB (ligand library licence), ligand labels for S0, worker hosts and GPUs, and confirmation of R3. Duplicate `docs/09-PIPELINE-EXECUTION.md` left in place.
+
+## 2026-11-07: full chain, first audit, complementary labels
+
+**Chain.** bindPredict, PSICHIC and DiffDock run as simulated workers, then evidence, hypotheses,
+scripted falsifier attacks, calibration with abstention, dossiers and controls. Records validate against
+`src/msf/schemas/artifacts.schema.json`. Validation: 0 problems on the corrected run.
+
+**First audit (before fixes), 39 checks, 16 failed.** Findings, recorded so they stay visible:
+- Accepted hypotheses passed the two-channel validator only through the planted homology fixture, which
+  exists only for true pairs. That is the most serious defect: the accepts prove nothing.
+- Evidence locators named files that do not exist. The stage rows are in `stages/batches/`.
+- A mechanism said "no structure was used" while citing structure-channel evidence.
+- Controls recorded no criteria, so the pass flags could not be checked.
+- No run cutoff and no calibration split file.
+
+**Fixes.** Locators now resolve (2,339 of 2,339; 24 fixture locators labelled as fixtures). Mechanism text
+corrected. Each control records its criterion. `calibration.json` and `hypotheses/fixture_dependence.json`
+added. The run cutoff is stated as none. The calibrator uses PSICHIC score only, since homology would leak
+the answer. `C` raised to 1e4, because strong regularisation flattened every probability.
+
+**Complementary input.** `metabolite_binding_sequences_human.csv` (8,685 rows, 3,868 proteins, 408 ChEBI
+ligands) matches 28 of the 256 unique screened domain spans exactly: 34 pairs, 16 ligands. The table is
+undated, so these labels cannot make a time-split benchmark. They are calibration positives only.
+`Test_set_metabolite_SIMLES.xlsx` has 2 metabolites. Only ATP matches a labelled ligand, so 15 of 16
+labelled ligands have no SMILES. A real screen is blocked on ligand structures.
+
+**Open.** Real workers, ligand SMILES for the labelled set, D-LIB, and the no-AlphaFold rule for benchmark
+DiffDock. Known gap: the sealed-truth rule is a process rule, not yet a hook.
+
+**Failure, repaired.** An earlier edit overwrote the committed `JOURNAL.md` (438 lines of scaffold history)
+instead of appending to it. It was caught at commit time by the diff. The committed history was restored from
+HEAD and this session's entries were appended. No committed line was lost.

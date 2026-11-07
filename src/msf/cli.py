@@ -39,8 +39,8 @@ app = typer.Typer(
 @app.command()
 def doctor(tier: int = typer.Option(0, help="Highest setup tier to check (0, 1 or 2).")) -> None:
     """Check tool readiness. Run this before believing any result."""
-    from pathlib import Path
     import subprocess
+    from pathlib import Path
 
     script = Path(__file__).resolve().parents[2] / "scripts" / "doctor.py"
     raise SystemExit(subprocess.call([sys.executable, str(script), "--tier", str(tier)]))
@@ -92,8 +92,8 @@ def evaluate(
 @app.command()
 def compare(run_a: str, run_b: str) -> None:
     """Paired comparison between two runs on identical items."""
-    from pathlib import Path
     import subprocess
+    from pathlib import Path
 
     script = Path(__file__).resolve().parents[2] / "scripts" / "compare_runs.py"
     raise SystemExit(subprocess.call([sys.executable, str(script), run_a, run_b]))
@@ -117,7 +117,7 @@ def validate() -> None:
             failures += 1
 
     try:
-        import jsonschema  # noqa: F401
+        import jsonschema
         import yaml
     except ImportError:
         typer.echo("  skip  loopspec validation (jsonschema/pyyaml not installed)")
@@ -134,6 +134,124 @@ def validate() -> None:
             failures += 1
 
     raise SystemExit(1 if failures else 0)
+
+
+screen_app = typer.Typer(no_args_is_help=True, help="Domain-vs-ligand screen (docs/12, docs/13).")
+app.add_typer(screen_app, name="screen")
+_RUN_ROOT = "runs"
+
+
+@screen_app.command("ingest")
+def screen_ingest(
+    input: str = typer.Option(..., help="Domain CSV, e.g. input/Test_sequences.csv."),
+    run_root: str = typer.Option(_RUN_ROOT, help="Where run directories are written."),
+) -> None:
+    """Validate the CSV, write a manifest. Count-in equals count-out, nothing dropped."""
+    from pathlib import Path
+
+    from msf.screen.pipeline import cmd_ingest
+
+    run_dir = cmd_ingest(Path(input), Path(run_root))
+    typer.echo(f"manifest: {run_dir / 'manifest.json'}")
+
+
+@screen_app.command("simulate")
+def screen_simulate(
+    input: str = typer.Option(..., help="Domain CSV. Truth is planted; scores are not evidence."),
+    run_root: str = typer.Option(_RUN_ROOT, help="Where run directories are written."),
+) -> None:
+    """Loop S1: run the simulation suite on the ingested domains. No network."""
+    from pathlib import Path
+
+    from msf.screen.pipeline import cmd_simulate
+
+    run_dir, results = cmd_simulate(Path(input), Path(run_root))
+    for r in results:
+        typer.echo(f"  {'PASS' if r['passed'] else 'FAIL'}  {r['scenario']}: {r['detail']}")
+    typer.echo(f"summary: {run_dir / 'simulation' / 'summary.json'}")
+    raise SystemExit(0 if all(r["passed"] for r in results) else 1)
+
+
+@screen_app.command("chain")
+def screen_chain(
+    input: str = typer.Option(..., help="Domain CSV. Simulated end to end; not evidence."),
+    run_root: str = typer.Option(_RUN_ROOT, help="Where run directories are written."),
+) -> None:
+    """Simulated full chain: bindPredict, PSICHIC, DiffDock, evidence, hypotheses, dossiers."""
+    import json
+    from pathlib import Path
+
+    from msf.screen.chain import run_chain
+    from msf.screen.ingest import ingest
+    from msf.screen.validate import validate_run
+
+    result = ingest(Path(input))
+    body = {"schema": "msf.screen.chain/v1", "input_sha256": result.file_sha256,
+            "counts": result.counts, "label": "SIMULATION"}
+    import hashlib
+    run_id = hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()[:16]
+    run_dir = Path(run_root) / f"chain-{run_id}"
+    # The run id covers the input only, so an old directory would be resumed and its stale
+    # batches reused. This is a regenerable simulation directory, so rebuild it from scratch.
+    import shutil
+
+    # Rebuild only what the chain generates. Keep the agent outputs (metrics, falsification,
+    # audit, report). Their inputs are deterministic, and the auditor re-checks them each run.
+    keep = {"metrics", "falsification", "audit", "report.md"}
+    if run_dir.exists():
+        for child in run_dir.iterdir():
+            if child.name in keep:
+                continue
+            shutil.rmtree(child) if child.is_dir() else child.unlink()
+    summary = run_chain(result.screened, run_dir)
+    problems = validate_run(run_dir)
+    typer.echo(json.dumps(summary["counts"], indent=2))
+    typer.echo(f"calibration: {summary['calibration']}")
+    typer.echo(f"controls: {summary['controls']}")
+    typer.echo(f"validation problems: {len(problems)}")
+    for p in problems[:20]:
+        typer.echo(f"  {p}")
+    typer.echo(f"run: {run_dir}")
+    raise SystemExit(1 if problems else 0)
+
+
+@screen_app.command("labels")
+def screen_labels(
+    input: str = typer.Option(..., help="Domain CSV to screen (Test_sequences.csv)."),
+    binding: str = typer.Option(..., help="Binding table (metabolite_binding_sequences_human.csv)."),
+    smiles: str = typer.Option(None, help="SMILES workbook (.xlsx). Needs the `data` extra."),
+    run_root: str = typer.Option(_RUN_ROOT, help="Where the labelled set is written."),
+) -> None:
+    """Match known binders to screened domains (exact span only). Labels are undated."""
+    import json
+    from pathlib import Path
+
+    from msf.screen.ingest import ingest
+    from msf.screen.labels import load_labels, smiles_coverage, write_labels
+
+    result = ingest(Path(input))
+    report = load_labels(Path(binding), result.screened)
+    out = write_labels(report, Path(run_root) / "labels")
+    typer.echo(f"labelled domains: {report.matched_domains}  pairs: {len(report.labels)}  "
+               f"ligands: {report.ligands}  protein-only rows (no exact span): {report.protein_only}")
+    typer.echo(f"labels: {out}")
+    if smiles:
+        names = {x["chebi"]: x["ligand_name"] for x in report.labels}
+        cov = smiles_coverage(Path(smiles), names)
+        typer.echo(json.dumps(cov, indent=2))
+
+
+@screen_app.command("run")
+def screen_run(
+    input: str = typer.Option(..., help="Domain CSV."),
+    run_root: str = typer.Option(_RUN_ROOT, help="Where run directories are written."),
+) -> None:
+    """Real workers. Not configured: raises NotImplementedError naming the blocker."""
+    from pathlib import Path
+
+    from msf.screen.pipeline import cmd_run
+
+    cmd_run(Path(input), Path(run_root))
 
 
 if __name__ == "__main__":

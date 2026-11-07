@@ -1,0 +1,9 @@
+# Stage thresholds for the screen. Uncalibrated on purpose.
+#
+# While calibrated is false, every row is written with advanced = null and nothing advances.
+# A cut is set only by loop S3, fitted on the val split, and recorded here with its source.
+# Hand-picked cuts are not allowed (docs/04 §5, docs/13 §4.4).
+
+calibrated: false
+calibration_source: null
+cuts: {}
