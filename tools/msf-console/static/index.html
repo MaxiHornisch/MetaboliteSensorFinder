@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deorphan console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div>
+    <h1>Deorphan console</h1>
+    <p class="masthead-note">Which small molecule does this protein sense? Two channels answer
+       from sequence alone, so a protein with no structure and no close relative is still readable.</p>
+  </div>
+  <dl class="run-state">
+    <div><dt>split</dt><dd>dev</dd></div>
+    <div><dt>cutoff</dt><dd>none enforced</dd></div>
+    <div><dt>compute</dt><dd>cpu</dd></div>
+  </dl>
+</header>
+
+<div class="shell">
+
+  <nav class="proteins" aria-label="Candidate proteins">
+    <h2>Candidates</h2>
+    <ul id="protein-list"></ul>
+    <button class="paste-toggle" id="paste-toggle" aria-expanded="false">Use another sequence</button>
+    <p class="aside" id="protein-aside"></p>
+  </nav>
+
+  <main>
+
+    <div class="specimen">
+      <h2 id="specimen-name">&nbsp;</h2>
+      <div class="measures" id="measures"></div>
+
+      <form class="paste-panel" id="paste-panel" hidden>
+        <label for="seq-name">Name this protein</label>
+        <input id="seq-name" placeholder="CLIC3_O95833" autocomplete="off">
+        <label for="seq-text">Amino acid sequence, or paste a FASTA record</label>
+        <textarea id="seq-text" rows="4" spellcheck="false"
+          placeholder="MAETKLQLFVKASEDGESVGHCPSCQRLFMVLLLKGVPFTLTTVDTRRSPDVLKDFAPGSQLPILLYDSDAKTDTLQIEDFLEE"></textarea>
+        <div class="paste-actions">
+          <button type="submit" class="btn">Load sequence</button>
+          <button type="button" class="btn-ghost" id="paste-cancel">Cancel</button>
+          <span class="run-msg" id="paste-msg"></span>
+        </div>
+      </form>
+    </div>
+
+    <section class="channel" aria-labelledby="pocket-h">
+      <div class="channel-head">
+        <h2 id="pocket-h">Where it binds</h2>
+        <span class="stamp">bindEmbed21DL, 5-model ensemble</span>
+      </div>
+      <p class="channel-sub" id="pocket-sub">Saturated residues are the ones the model calls
+         binding. Depth of colour is how sure it is, on a scale of 0 to 9.</p>
+
+      <div class="strip-controls" role="group" aria-label="Ligand class">
+        <button class="seg is-on" data-track="small">Small molecule</button>
+        <button class="seg" data-track="metal">Metal</button>
+        <button class="seg" data-track="nuc">Nucleic acid</button>
+      </div>
+
+      <div id="strip" class="strip" aria-label="Per-residue binding reliability"></div>
+      <p class="readout" id="readout">Point at a residue to read its index.</p>
+
+      <div class="legend">
+        <span>binds</span>
+        <span class="ramp" id="ramp-bind"></span>
+        <span class="legend-sep"></span>
+        <span>does not</span>
+        <span class="ramp" id="ramp-no"></span>
+        <span class="legend-sep"></span>
+        <span>left to right, unsure to certain</span>
+      </div>
+
+      <p class="caveat" id="pocket-caveat"></p>
+    </section>
+
+    <section class="channel" aria-labelledby="screen-h">
+      <div class="channel-head">
+        <h2 id="screen-h">What it binds</h2>
+        <span class="stamp" id="screen-stamp"></span>
+      </div>
+      <p class="channel-sub">Score this protein against any ligand you can write as SMILES.</p>
+
+      <form class="ligand-form" id="ligand-form">
+        <div class="field">
+          <label for="lig-name">Ligand name</label>
+          <input id="lig-name" placeholder="citrate" autocomplete="off">
+        </div>
+        <div class="field grow">
+          <label for="lig-smiles">SMILES</label>
+          <input id="lig-smiles" placeholder="OC(=O)CC(O)(CC(O)=O)C(O)=O" autocomplete="off" spellcheck="false">
+        </div>
+        <button type="submit" class="btn-ghost">Add ligand</button>
+      </form>
+
+      <ul class="queue" id="queue"></ul>
+
+      <div class="run-row">
+        <button id="run" class="btn">Run screen</button>
+        <label class="check"><input type="checkbox" id="calibrate" checked>
+          Compare against 30 unrelated proteins</label>
+        <span class="run-msg" id="run-msg"></span>
+      </div>
+
+      <div id="results"></div>
+    </section>
+
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -27,13 +27,16 @@ import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, field
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 @dataclass
 class Check:
     name: str
     tier: int
-    kind: str  # "exe" | "module" | "env"
+    kind: str  # "exe" | "module" | "env" | "path"
     probe: str
     why: str
     version_cmd: list[str] | None = None
@@ -73,6 +76,24 @@ CHECKS: list[Check] = [
           "which are orphans partly because sequence search found them nothing."),
     Check("hmmer", 1, "exe", "jackhmmer", "Sequence homology and conservation."),
     Check("biopython", 1, "module", "Bio", "Structure parsing."),
+
+    # Sequence-based channels (P-007, P-008). Each lives in a sibling repo with its
+    # own virtualenv, because their torch pins are mutually incompatible: bindPredict
+    # runs torch 2.14.1+cpu, PSICHIC is capped at 2.9.0+cpu by the torch_scatter
+    # wheels. They are invoked as subprocesses, never imported.
+    Check("bindPredict.weights", 1, "path",
+          "bindPredict-repo/trained_models/checkpoint1.pt",
+          "P-007 pocket-from-sequence channel. The 5-checkpoint bindEmbed21DL ensemble."),
+    Check("bindPredict.venv", 1, "path", "bindPredict-repo/.venv/bin/python",
+          "P-007. CPU torch venv; must not be shared with PSICHIC."),
+    Check("psichic.weights", 1, "path",
+          "PSICHIC/trained_weights/multitask_PSICHIC/model.pt",
+          "P-008 interaction channel. CONTAMINATED to 2023-02-02 (leak L5c) - usable "
+          "only as an explicitly contaminated configuration. See PSICHIC/PROVENANCE.md.",
+          optional=True),
+    Check("psichic.venv", 1, "path", "PSICHIC/.venv/bin/python",
+          "P-008. Pinned to torch 2.9.0+cpu, the newest with torch_scatter wheels.",
+          optional=True),
 
     # ---- Tier 2: GPU and cloud. ----
     Check("boltz", 2, "exe", "boltz", "Co-folding with an affinity head (proposal P-002).",
@@ -115,6 +136,12 @@ def run(check: Check) -> Check:
         check.ok = bool(os.environ.get(check.probe))
         # Never print the value.
         check.detail = "set" if check.ok else "unset"
+    elif check.kind == "path":
+        # Sibling tool repos, each in its own virtualenv with its own torch pin.
+        # They are never on PATH and must never be imported into this process.
+        p = (REPO_ROOT.parent / check.probe)
+        check.ok = p.exists()
+        check.detail = "present" if check.ok else f"missing: {p}"
     return check
 
 
