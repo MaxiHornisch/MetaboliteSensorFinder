@@ -132,9 +132,10 @@ further design prose.
 - **`main`** — the submission branch: agent definition, input tables and the
   presentation materials.
 - **`scaffold/initial-documentation`** — an extended parallel line of work: a Python
-  package with a CLI and tests, an experiment journal, task and decision records, and
-  the license files. Its pipeline workers are simulated, and it deletes the data files
-  and screener agent that `main` carries, so the two branches have not been reconciled.
+  package with a CLI and tests, an experiment journal, task and decision records,
+  research of the data sources with per-source licensing, provenance and
+  redistribution verdicts, and the license files. Its pipeline workers are simulated;
+  the two branches have not been reconciled.
 
 ## License
 
