@@ -1,0 +1,111 @@
+# The baseline loop.
+#
+# Deliberately conservative: it is the thing every later version must beat.
+# A baseline tuned to look good makes every subsequent improvement unfalsifiable,
+# so nothing here is tuned at all.
+#
+# Validate with: pytest tests/unit/test_loopspec.py
+
+loopspec_version: "1"
+id: v0.1.0-baseline
+description: >
+  Baseline configuration. All five evidence channels enabled, classical docking with
+  decoy-calibrated z-scores, the full nine-attack falsification battery, logistic fusion
+  with isotonic calibration and no correlation discount. The absence of the correlation
+  discount is intentional: it is the first proposed change, and the baseline must not
+  already contain it.
+
+channels:
+
+  literature:
+    agent: librarian
+    enabled: true
+    max_documents: 60
+    date_filter: strict          # 'none' is refused by the guard on any benchmark split
+
+  structure:
+    agent: structuralist
+    enabled: true
+    # AlphaFold DB postdates both the 2015 and 2018 cutoffs entirely, so at those cutoffs
+    # this channel has experimental structures and homology models only. A 2018-cutoff run
+    # that uses an AlphaFold model is leak L5 and the guard must refuse it.
+    allowed_structure_sources: [experimental, homologue]
+    pocket_detector: [fpocket, p2rank]
+    pocket_quality_gate:
+      min_plddt: 70
+      max_pae_within_pocket: 10.0   # the stricter and more important of the two gates
+      min_volume_A3: 150
+    ensemble:
+      method: none                  # single conformer in the baseline; ensembles are proposal P-003
+      n_conformers: 1
+
+  chemistry:
+    agent: chemist
+    # NOT HMDB. HMDB is CC BY-NC 4.0 with an explicit-permission clause, which makes it
+    # undonatable under this repository licence -- see docs/06-DATA-SOURCES.md.
+    # ChEBI (CC BY 4.0, with a dated release exactly at the 2018 cutoff) plus LIPID MAPS
+    # (CC BY 4.0) are the redistributable substitute. This costs metabolome coverage, and
+    # the coverage statement in every dossier must say so.
+    library: chebi_lipidmaps_endogenous_v1   # resolved via the snapshot manifest, never fetched live
+    n_decoys_per_candidate: 50
+    protonation_ph: 7.4
+    keep_unfiltered_control: true
+
+  screening:
+    agent: screener
+    docking:
+      engine: vina
+      exhaustiveness: 16
+      seed: from_run_id
+    cofolding:
+      model: none                   # co-folding is proposal P-002
+      affinity_head: false
+    score_normalisation: decoy_zscore
+
+  genetics:
+    agent: geneticist
+    enabled: true
+    require_colocalisation: false   # too strict for the baseline; most loci have none. Attribution confidence is recorded instead
+
+  homology:
+    agent: comparativist
+    enabled: true
+    foldseek_evalue: 1.0e-3
+    easy_stratum_identity_threshold: 0.6
+
+hypothesis:
+  agent: hypothesizer
+  min_independent_channels: 2
+  require_mechanism: true
+
+falsification:
+  agent: falsifier
+  battery:
+    - decoy_substitution
+    - pocket_ablation
+    - abundance
+    - pathway_coherence
+    - promiscuity
+    - template_dependence
+    - literature_contradiction
+    - conservation
+    - restatement
+  max_refinement_rounds: 3
+
+fusion:
+  model: logistic_l2
+  correlation_discount: false       # ← absent by design. See P-001
+  calibration: isotonic
+  fitted_on: val
+  abstain_below: 0.35
+
+models:
+  orchestrator: claude-opus-5
+  channels: claude-sonnet-5-5
+  falsifier: claude-opus-5         # the adversary gets the stronger model, deliberately
+  probe: claude-haiku-5-5
+
+budgets:
+  usd_per_target: 4.00
+  wallclock_minutes_per_target: 25
+  gpu_seconds_per_target: 900

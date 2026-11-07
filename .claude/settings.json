@@ -1,0 +1,67 @@
+{
+  "$comment": "Guards are structural. Every leakage control in docs/04-EVALUATION.md is enforced here or in an MCP wrapper, never by prompt instruction. A prompt is a suggestion; a tool that refuses is a guarantee.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/guard.py immutable-paths",
+            "$comment": "Refuses writes to tests/controls/ during an L2 run, and to benchmarks/ from any loop other than L0. Modifying a control to pass it is a hard error, not a judgement call."
+          }
+        ]
+      },
+      {
+        "matcher": "WebFetch|WebSearch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/guard.py date-filter",
+            "$comment": "In benchmark mode, refuses any retrieval without a resolved cutoff, and refuses egress to un-pinned live database hosts. Leaks L1 and L2."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/guard.py bash-egress",
+            "$comment": "Blocks curl/wget to live database endpoints during a benchmark run; snapshots only. Also blocks any invocation of scripts/unseal.py from inside an agent - unsealing requires an interactive human."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/guard.py validate-schemas",
+            "$comment": "Validates any written EvidenceItem / Hypothesis / TargetDossier against its schema. Unvalidated data crossing an agent boundary is how agentic pipelines silently corrupt."
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/guard.py session-isolation",
+            "$comment": "L1/L2 refuse to start in a session that has touched post-cutoff sources. The curator (L0) may read post-cutoff data; nothing that scores may."
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./benchmarks/splits/sealed/**)",
+      "Bash(python scripts/unseal.py:*)"
+    ]
+  }
+}

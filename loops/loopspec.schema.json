@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/MetaboliteSensorFinder/loops/loopspec.schema.json",
+  "title": "Loopspec",
+  "description": "A versioned, declarative definition of one research-loop configuration. Everything that affects a result must appear here, because the spec is hashed into the run record. Nothing that changes output may live only in a prompt.",
+  "type": "object",
+  "required": ["loopspec_version", "id", "description", "channels", "hypothesis", "falsification", "fusion", "models", "budgets"],
+  "additionalProperties": false,
+  "properties": {
+    "loopspec_version": { "const": "1" },
+    "id": {
+      "type": "string",
+      "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+(-[a-z0-9-]+)?$",
+      "description": "Semantic version over COMPARABILITY OF RESULTS. MAJOR: benchmark, splits or primary metric changed, prior results incomparable. MINOR: channel, agent, model or fusion changed. PATCH: no intended effect on results - a patch that moves a metric is reclassified MINOR."
+    },
+    "extends": {
+      "type": "string",
+      "description": "Parent loopspec id. Inheritance keeps version diffs to the lines that changed, which is what makes review feasible."
+    },
+    "description": { "type": "string", "minLength": 10 },
+
+    "channels": {
+      "type": "object",
+      "description": "The five independent evidence channels. Channels do not see each other's output; independence is what the fusion step assumes.",
+      "required": ["literature", "structure", "screening", "genetics", "homology"],
+      "additionalProperties": false,
+      "properties": {
+        "literature": {
+          "type": "object",
+          "required": ["agent", "enabled", "date_filter"],
+          "properties": {
+            "agent": { "const": "librarian" },
+            "enabled": { "type": "boolean" },
+            "max_documents": { "type": "integer", "minimum": 1 },
+            "date_filter": {
+              "enum": ["strict", "none"],
+              "description": "'none' is REFUSED by the guard on any benchmark split. Leak L1."
+            }
+          }
+        },
+        "structure": {
+          "type": "object",
+          "required": ["agent", "enabled", "pocket_quality_gate"],
+          "properties": {
+            "agent": { "const": "structuralist" },
+            "enabled": { "type": "boolean" },
+            "allowed_structure_sources": {
+              "type": "array",
+              "items": { "enum": ["experimental", "homologue", "predicted"] },
+              "minItems": 1,
+              "description": "Which structure provenances the channel may use. AlphaFold DB postdates the 2015 and 2018 cutoffs entirely, so 'predicted' is leak L5 on those splits and the guard refuses it. A benchmark at an early cutoff therefore runs on experimental and homology structures only, which materially weakens the structure channel and must be stated in the report rather than quietly worked around."
+            },
+            "pocket_detector": {
+              "type": "array",
+              "items": { "enum": ["fpocket", "p2rank"] },
+              "minItems": 1,
+              "description": "Run both where possible; disagreement is signal about pocket reliability and must be reported, not resolved by preference."
+            },
+            "pocket_quality_gate": {
+              "type": "object",
+              "required": ["min_plddt", "max_pae_within_pocket", "min_volume_A3"],
+              "properties": {
+                "min_plddt": { "type": "number", "minimum": 0, "maximum": 100 },
+                "max_pae_within_pocket": {
+                  "type": "number",
+                  "description": "Matters more than pLDDT: a pocket can be built from high-pLDDT residues whose RELATIVE positions are unconstrained."
+                },
+                "min_volume_A3": { "type": "number", "minimum": 0 }
+              }
+            },
+            "ensemble": {
+              "type": "object",
+              "properties": {
+                "method": { "enum": ["none", "af2_subsampled", "md", "boltz_samples"] },
+                "n_conformers": { "type": "integer", "minimum": 1 }
+              }
+            }
+          }
+        },
+        "chemistry": {
+          "type": "object",
+          "properties": {
+            "agent": { "const": "chemist" },
+            "library": { "type": "string", "description": "Candidate library id, resolved via the snapshot manifest." },
+            "n_decoys_per_candidate": { "type": "integer", "minimum": 20 },
+            "protonation_ph": { "type": "number", "default": 7.4 },
+            "keep_unfiltered_control": {
+              "type": "boolean",
+              "description": "Retain a subset not filtered by the pocket ligand_constraint. If the constraint was wrong, this is the only way anyone finds out."
+            }
+          }
+        },
+        "screening": {
+          "type": "object",
+          "required": ["agent", "score_normalisation"],
+          "properties": {
+            "agent": { "const": "screener" },
+            "docking": {
+              "type": "object",
+              "properties": {
+                "engine": { "enum": ["vina", "smina", "gnina", "diffdock", "none"] },
+                "exhaustiveness": { "type": "integer", "minimum": 1 },
+                "seed": { "const": "from_run_id" }
+              }
+            },
+            "cofolding": {
+              "type": "object",
+              "properties": {
+                "model": { "enum": ["boltz2", "chai1", "none"] },
+                "affinity_head": { "type": "boolean" }
+              },
+              "description": "Different failure modes from docking. Disagreement between the two is informative and must be reported, never averaged away."
+            },
+            "score_normalisation": {
+              "enum": ["decoy_zscore", "library_percentile"],
+              "description": "A raw docking score is NEVER a permitted cross-ligand ranking signal. The schema admits no option for one."
+            }
+          }
+        },
+        "genetics": {
+          "type": "object",
+          "properties": {
+            "agent": { "const": "geneticist" },
+            "enabled": { "type": "boolean" },
+            "require_colocalisation": { "type": "boolean" }
+          }
+        },
+        "homology": {
+          "type": "object",
+          "properties": {
+            "agent": { "const": "comparativist" },
+            "enabled": { "type": "boolean" },
+            "foldseek_evalue": { "type": "number" },
+            "easy_stratum_identity_threshold": {
+              "type": "number",
+              "default": 0.6,
+              "description": "Binding-region identity above which a target is flagged 'easy'. Recovering an easy item is a sanity check, not an achievement."
+            }
+          }
+        }
+      }
+    },
+
+    "hypothesis": {
+      "type": "object",
+      "required": ["agent", "min_independent_channels", "require_mechanism"],
+      "properties": {
+        "agent": { "const": "hypothesizer" },
+        "min_independent_channels": {
+          "type": "integer",
+          "minimum": 2,
+          "description": "Counted AFTER the correlation discount. Two channels sharing a structural template are one channel."
+        },
+        "require_mechanism": {
+          "const": true,
+          "description": "Must name specific pocket residues. 'Binds in the orthosteric pocket' is not a mechanism."
+        }
+      }
+    },
+
+    "falsification": {
+      "type": "object",
+      "required": ["agent", "battery", "max_refinement_rounds"],
+      "properties": {
+        "agent": { "const": "falsifier" },
+        "battery": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": ["decoy_substitution", "pocket_ablation", "abundance", "pathway_coherence",
+                     "promiscuity", "template_dependence", "literature_contradiction",
+                     "conservation", "restatement"]
+          },
+          "description": "'restatement' is the one that matters most: it detects channels that are the same fact arriving twice."
+        },
+        "max_refinement_rounds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "Bounded, because unbounded critique converges on text that satisfies the critic. At the bound the hypothesis passes forward WITH the unresolved attack attached."
+        }
+      }
+    },
+
+    "fusion": {
+      "type": "object",
+      "required": ["model", "calibration", "fitted_on", "abstain_below"],
+      "properties": {
+        "model": { "enum": ["logistic_l2", "logistic_l1", "gbm", "mean_rank"] },
+        "correlation_discount": { "type": "boolean" },
+        "calibration": { "enum": ["isotonic", "platt", "none"] },
+        "fitted_on": {
+          "enum": ["val"],
+          "description": "Only 'val'. Fitting on 'dev' overfits development targets; 'sealed' is forbidden outright and the fusion agent refuses to run with it in scope."
+        },
+        "abstain_below": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Calibrated probability below which the loop returns 'no confident ligand'. A loop version that never abstains cannot be promoted."
+        }
+      }
+    },
+
+    "models": {
+      "type": "object",
+      "required": ["orchestrator", "channels", "falsifier", "probe"],
+      "description": "A model change is ALWAYS at least a MINOR bump: it changes results even when nothing else does.",
+      "properties": {
+        "orchestrator": { "type": "string" },
+        "channels": { "type": "string" },
+        "falsifier": {
+          "type": "string",
+          "description": "Give the adversary the strongest available model. If the adversary is weaker than the proposer, everything survives."
+        },
+        "probe": { "type": "string", "description": "Closed-book contamination probe. Small and fast." }
+      }
+    },
+
+    "budgets": {
+      "type": "object",
+      "required": ["usd_per_target", "wallclock_minutes_per_target"],
+      "description": "Declared in the spec so cost is a property of a loop version and a change that triples cost is visible in the diff.",
+      "properties": {
+        "usd_per_target": { "type": "number", "exclusiveMinimum": 0 },
+        "wallclock_minutes_per_target": { "type": "number", "exclusiveMinimum": 0 },
+        "gpu_seconds_per_target": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}

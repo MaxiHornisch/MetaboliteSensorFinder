@@ -1,0 +1,54 @@
+[project]
+name = "metabolite-sensor-finder"
+version = "0.1.0"
+description = "A research loop for endogenous ligand assignment to orphan human proteins, and a retrospective time-split benchmark to evaluate it."
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+
+# Tier 0 of docs/05-TOOLS-SETUP.md: no GPU, no API keys beyond Anthropic.
+# Heavier scientific tooling lives in the optional groups below so that a judge can
+# reproduce the schema and metric layers in minutes without a docking stack.
+dependencies = [
+    "pydantic>=2.7",
+    "jsonschema>=4.22",
+    "pyyaml>=6.0",
+    "duckdb>=1.0",
+    "pyarrow>=16.0",
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "scipy>=1.13",
+    # Upper bound is deliberate and load-bearing: scikit-learn 1.8 removed
+    # CalibratedClassifierCV(cv="prefit"), which is how we calibrate a fused score that
+    # was fitted separately on `val`. Calibration is this project's PRIMARY metric
+    # (ADR-0003), so a silent major-version bump breaks the headline number rather than
+    # a peripheral feature. Raise this bound only together with a migration to
+    # FrozenEstimator and a re-run of the calibration tests.
+    "scikit-learn>=1.5,<1.8",
+    "httpx>=0.27",
+    "rich>=13.7",
+    "typer>=0.12",
+]
+
+[project.optional-dependencies]
+chem = ["rdkit>=2024.3"]
+struct = ["biopython>=1.83", "prolif>=2.0"]
+agent = ["claude-agent-sdk>=0.1"]
+dev = ["pytest>=8.2", "pytest-cov>=5.0", "ruff>=0.5", "mypy>=1.10"]
+
+[project.scripts]
+msf = "msf.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/msf"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true

@@ -1,0 +1,44 @@
+# Run artifacts: large, regenerable, hash-tracked in runs/INDEX.md
+runs/*
+!runs/INDEX.md
+!runs/.gitkeep
+
+# Sealed benchmark split stays encrypted; the plaintext must never be committed
+benchmarks/splits/sealed/
+benchmarks/splits/*.plain.*
+
+# Snapshots are fetched and SHA-256 verified, never committed (see docs/06-DATA-SOURCES.md)
+data/snapshots/
+*.parquet
+!benchmarks/**/*.parquet
+
+# Structures and poses
+*.pdb
+*.pdbqt
+*.cif
+*.sdf
+*.mol2
+!tests/fixtures/**
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Web
+web/node_modules/
+web/.next/
+web/out/
+web/data/
+
+# OS / editor
+.DS_Store
+Thumbs.db

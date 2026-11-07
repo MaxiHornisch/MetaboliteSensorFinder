@@ -1,0 +1,84 @@
+# WORKED EXAMPLE, not an active pre-registration.
+#
+# Shown so the format is concrete before the first real one is written. A real
+# pre-registration drops the EXAMPLE- prefix, is hashed, and the hash goes into the run
+# manifest before the run starts.
+#
+# Why this file exists at all: without a metric and an expected effect written down
+# BEFORE the run, an agent evaluating its own change will find some metric that moved and
+# report that one. Pre-registration is what separates a confirmatory result from an
+# exploratory one, and only confirmatory results are eligible for promotion.
+#
+# See docs/07-VERSIONING.md section 3.
+
+loop_version: v0.2.0-fusion-correlation
+incumbent: v0.1.0-baseline
+proposal: P-001
+written_at: 2026-11-07T10:00:00Z
+written_by: "<name>"
+
+change: >
+  Set fusion.correlation_discount to true. Discount agreement between evidence channels
+  that derive from the same structural template, using a correlation matrix estimated on
+  the val split.
+
+hypothesis: >
+  The fused probability currently assumes channel independence. When the homology channel
+  transfers a ligand from template T and the screening channel docks against a structure
+  derived from T, their agreement is one piece of evidence counted twice. Discounting it
+  should reduce over-confidence on exactly those targets, improving calibration without
+  materially reducing recall.
+
+# One primary metric. Everything else is secondary and gets Benjamini-Hochberg control.
+primary_metric: selective_accuracy_at_20pct_coverage
+expected_direction: increase
+minimum_effect: 0.05
+
+secondary_metrics:
+  - ece
+  - brier
+  - recall_at_10
+  - false_confidence_rate
+
+# Stated so a null result is interpretable rather than being read as "no difference".
+minimum_detectable_effect_note: >
+  With the current benchmark N, the minimum detectable effect on the primary metric is
+  approximately 0.08 at 80% power. An observed effect of 0.05 would therefore NOT be
+  distinguishable from zero, and must be reported as not detectable rather than as an
+  improvement. If N is below this, say so and do not proceed to sealed.
+
+splits: [dev, val, sealed]
+
+stopping_rule: >
+  If the effect is absent on dev (paired bootstrap CI includes zero), stop. Do not proceed
+  to val. Record the outcome in loops/CHANGELOG.md. Most proposals die here, and that is
+  what preserves the sealed split for the few that survive.
+
+controls_required: all
+
+analysis:
+  method: paired bootstrap on identical items
+  resamples: 10000
+  interval: BCa
+  alpha: 0.05
+  multiplicity: benjamini-hochberg at q=0.05 on secondary metrics only
+  stratify_by: [protein_family, ligand_class, contamination_bin]
+  seeds: 5
+
+# The promotion gate is in docs/04-EVALUATION.md section 8 and is not restated here, so
+# that it cannot drift between documents.
+promotion_gate: docs/04-EVALUATION.md#8
+
+# Risks that would make a positive result untrustworthy. Named in advance so they cannot
+# be rationalised away afterwards.
+pre_declared_risks:
+  - >
+    The correlation matrix is estimated on small N and is itself uncertain. A large
+    apparent gain may reflect overfitting the matrix to val rather than a real effect.
+  - >
+    The discount may over-correct and lose genuine multi-channel support, which would show
+    as a drop in recall_at_10 alongside the calibration gain. That trade is acceptable;
+    a drop with no calibration gain is not.
+  - >
+    If the primary metric improves but false_confidence_rate rises, the change fails the
+    gate regardless of the primary metric.

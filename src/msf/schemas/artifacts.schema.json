@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/MetaboliteSensorFinder/schemas/artifacts.schema.json",
+  "title": "MetaboliteSensorFinder artifact contracts",
+  "description": "Typed contracts validated at every agent boundary. Unvalidated data crossing a boundary is the mechanism by which agentic pipelines silently corrupt: a claim drifts from its evidence and nothing errors. Enforced by the validate-schemas guard hook. Narrative reference: docs/02-ARCHITECTURE.md section 4.",
+
+  "$defs": {
+
+    "Provenance": {
+      "type": "object",
+      "required": ["source", "snapshot", "retrieved", "source_date", "locator", "tool_version"],
+      "additionalProperties": false,
+      "properties": {
+        "source": { "type": "string", "description": "Database or tool name." },
+        "snapshot": { "type": "string", "description": "Snapshot manifest id. Ties the fact to a pinned release (leak L2)." },
+        "retrieved": { "type": "string", "format": "date-time", "description": "When WE fetched it." },
+        "source_date": {
+          "type": "string",
+          "format": "date",
+          "description": "The date of the FACT - earliest primary publication. The time split filters on THIS, not on `retrieved`. Conflating the two is leak L1 and silently invalidates every downstream number, in the direction of looking better. This is the most consequential field in the repository."
+        },
+        "source_date_confidence": { "enum": ["high", "medium", "low"] },
+        "locator": { "type": "string", "description": "DOI, PDB ID, accession, or file path plus line." },
+        "quote": { "type": "string", "description": "Verbatim supporting text. Mandatory for literature claims - it is what the auditor checks against, and a claim without one cannot be audited." },
+        "tool_version": { "type": "string" },
+        "command": { "type": "string", "description": "Exact, reproducible invocation." },
+        "reproducible": { "type": "boolean", "default": true, "description": "False forces manual review." }
+      }
+    },
+
+    "EvidenceItem": {
+      "type": "object",
+      "description": "Every piece of evidence from every channel shares this envelope.",
+      "required": ["evidence_id", "channel", "target", "claim", "direction", "strength", "provenance"],
+      "additionalProperties": false,
+      "properties": {
+        "evidence_id": { "type": "string", "pattern": "^ev_[0-9a-f]{8,}$" },
+        "channel": { "enum": ["literature", "structure", "chemistry", "screening", "genetics", "homology"] },
+        "target": { "type": "string", "description": "UniProt accession." },
+        "claim": {
+          "type": "object",
+          "required": ["type", "assertion"],
+          "properties": {
+            "type": { "type": "string" },
+            "assertion": { "type": "string" },
+            "qualifiers": {
+              "type": "string",
+              "description": "Carry the hedge the data earned. 'Activates the receptor' and 'activates at 300 uM in an overexpression system' are different claims, and dropping the qualifier is the most frequent audit finding."
+            },
+            "value": { "description": "Numeric value where the claim is quantitative." },
+            "units": { "type": "string" }
+          }
+        },
+        "direction": { "enum": ["supports", "refutes", "neutral"], "description": "Refuting evidence is first-class and systematically under-retrieved." },
+        "strength": { "type": "number", "minimum": 0, "maximum": 1, "description": "Channel-local, calibrated separately per channel. Not comparable across channels before fusion." },
+        "template_ids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Structures this item depends on. Required for the falsifier restatement attack: two channels deriving from the same template are ONE channel, and undiscounted agreement between them is the main route to over-confidence."
+        },
+        "provenance": { "$ref": "#/$defs/Provenance" }
+      }
+    },
+
+    "FalsificationAttempt": {
+      "type": "object",
+      "required": ["attack", "outcome"],
+      "additionalProperties": false,
+      "properties": {
+        "attack": {
+          "enum": ["decoy_substitution", "pocket_ablation", "abundance", "pathway_coherence",
+                   "promiscuity", "template_dependence", "literature_contradiction",
+                   "conservation", "restatement"]
+        },
+        "outcome": {
+          "enum": ["survived", "weakened", "killed", "not_attempted"],
+          "description": "An attack that could not be run is `not_attempted` with a reason. Recording an un-run attack as `survived` is forbidden."
+        },
+        "detail": { "type": "string" },
+        "reason_not_attempted": { "type": "string" },
+        "evidence": { "type": "array", "items": { "type": "string" } },
+        "command": { "type": "string" }
+      }
+    },
+
+    "Hypothesis": {
+      "type": "object",
+      "required": ["hypothesis_id", "target", "ligand", "mechanism", "supporting_evidence", "expected_attack"],
+      "additionalProperties": false,
+      "properties": {
+        "hypothesis_id": { "type": "string", "pattern": "^hyp_[0-9a-f]{8,}$" },
+        "target": { "type": "string" },
+        "ligand": {
+          "type": "object",
+          "required": ["inchikey"],
+          "properties": {
+            "chebi": { "type": "string" },
+            "inchikey": { "type": "string" },
+            "name": { "type": "string" }
+          }
+        },
+        "mechanism": {
+          "type": "string",
+          "minLength": 40,
+          "description": "Must reference specific pocket residues. 'Binds in the orthosteric pocket' is not a mechanism."
+        },
+        "constraint_set": { "type": "string", "description": "The pocket-derived constraints the candidate had to satisfy, e.g. 'anionic, <=350 Da, >=1 carboxylate'. Derived BEFORE candidates are named." },
+        "supporting_evidence": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 2,
+          "description": "At least two INDEPENDENT non-LLM channels, counted after the correlation discount. Enforced by the validator, not by a prompt."
+        },
+        "refuting_evidence": { "type": "array", "items": { "type": "string" } },
+        "expected_attack": { "type": "string", "description": "How the proposer expects this to be wrong. Required: a hypothesis with no stated route to being wrong is rejected." },
+        "model_prior": {
+          "type": "boolean",
+          "default": false,
+          "description": "True if the candidate surfaced before the evidence was reviewed. An honest flag costs the project nothing because contaminated items are reported separately; a hidden one invalidates a result."
+        },
+        "prior_speculation": { "type": "boolean", "description": "Was this pairing already speculated about pre-cutoff? Recovery is reported split by this flag." },
+        "falsification": {
+          "type": "object",
+          "required": ["attempts", "survived"],
+          "properties": {
+            "attempts": { "type": "array", "items": { "$ref": "#/$defs/FalsificationAttempt" } },
+            "survived": { "type": "boolean" },
+            "unresolved_attacks": { "type": "array", "items": { "type": "string" }, "description": "Attacks still open at the refinement bound. The hypothesis passes forward WITH these attached, never silently accepted." },
+            "refinement_rounds": { "type": "integer", "maximum": 5 }
+          }
+        }
+      }
+    },
+
+    "TargetDossier": {
+      "type": "object",
+      "description": "The researcher-facing artifact and the unit the web app renders.",
+      "required": ["target", "run_id", "loop_version", "hypotheses", "abstained",
+                   "what_would_change_our_mind", "limitations", "library_coverage"],
+      "additionalProperties": false,
+      "properties": {
+        "target": { "type": "string" },
+        "run_id": { "type": "string" },
+        "loop_version": { "type": "string" },
+        "cutoff": { "type": "string", "format": "date" },
+        "hypotheses": { "type": "array", "items": { "$ref": "#/$defs/Hypothesis" } },
+        "calibrated_probability": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Null when abstained. Never the raw fused score - the raw score is not a probability and must never be rendered as one."
+        },
+        "calibration_model": { "type": "string", "description": "Which fitted calibrator produced the probability, and on which split it was fitted." },
+        "channel_contributions": {
+          "type": "object",
+          "description": "Reported AFTER correlation discounting. Pre-discount contributions are misleading and may not be rendered."
+        },
+        "correlation_discount_applied": { "type": "boolean" },
+        "abstained": { "type": "boolean" },
+        "abstention_reason": { "type": "string", "description": "Required when abstained. 'No confident ligand' plus a documented search is a result, and on genuine orphans it is the expected one." },
+        "what_would_change_our_mind": {
+          "type": "object",
+          "required": ["experiment", "cost"],
+          "description": "Mandatory, first-class, never buried. Derived from the falsifier's unresolved and weakened attacks.",
+          "properties": {
+            "experiment": { "type": "string" },
+            "cost": { "type": "object", "required": ["confidence"], "properties": { "estimate": { "type": "string" }, "confidence": { "enum": ["high", "medium", "low", "not_estimated"] } } },
+            "does_not_resolve": { "type": "string", "description": "What this experiment would leave open. Required: an experiment presented without its blind spot oversells itself." }
+          }
+        },
+        "library_coverage": {
+          "type": "string",
+          "description": "What the search could NOT have found. Required in every dossier: if the true ligand was absent from the library, no downstream step could find it and nothing would have errored."
+        },
+        "limitations": {
+          "type": "object",
+          "required": ["contamination_bin", "structure_source", "stratum"],
+          "properties": {
+            "contamination_bin": { "enum": ["clean", "partial", "contaminated", "not_probed"] },
+            "structure_source": { "enum": ["experimental", "homologue", "predicted", "none"] },
+            "stratum": { "enum": ["clean", "easy", "disputed"] },
+            "empty_channels": { "type": "array", "items": { "type": "string" }, "description": "Channels that returned nothing, with their query logs. An empty channel WITH a query log is information; without one it is a bug." }
+          }
+        }
+      }
+    }
+  },
+
+  "oneOf": [
+    { "$ref": "#/$defs/EvidenceItem" },
+    { "$ref": "#/$defs/Hypothesis" },
+    { "$ref": "#/$defs/TargetDossier" }
+  ]
+}
