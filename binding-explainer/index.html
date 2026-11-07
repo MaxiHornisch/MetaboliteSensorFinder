@@ -210,7 +210,7 @@
     <div class="card"><div class="big">408</div><p class="muted" style="margin:6px 0 0">distinct ligands (ChEBI)</p></div>
     <div class="card"><div class="big">3.5M</div><p class="muted" style="margin:6px 0 0">domain × ligand pairs (8,685 × 408), too many for 3D docking</p></div>
   </div>
-  <p style="margin-top:18px">The screen runs three stages. Each stage is more expensive than the one before, so it only gets the candidates that survive the stage before:</p>
+  <p style="margin-top:18px">The screen runs three stages, ordered from broad to precise. Each stage only receives the candidates that survived the stage before:</p>
   <div class="funnel">
     <div class="stage"><div class="n">1</div><div><h3>bindPredict · sequence screen</h3><p class="muted" style="margin:0">Scores every domain for ligand-binding likelihood from its sequence alone. Only likely binders advance.</p></div></div>
     <div class="stage"><div class="n">2</div><div><h3>PSICHIC · ligand screen</h3><p class="muted" style="margin:0">Scores each surviving domain against the full metabolite set, one score per domain–ligand pair.</p></div></div>
@@ -1434,7 +1434,32 @@ function oxygenPos(){
   return { x: fe.x + dx/len*1.9, y: fe.y + dy/len*1.9, z: fe.z + dz/len*1.9 };
 }
 
-function drawScene(){
+let camToken = 0, gliding = false;
+function glideCamera(){
+  const token = ++camToken;
+  gliding = true;
+  if (spinning) viewer.spin(false);            // pause spin so it does not fight the camera move
+  viewer.zoomTo({resn: 'HEM'}, 550);           // centre on the heme…
+  setTimeout(function settle(){                // …then wait for that move to actually stop…
+    if (token !== camToken) return;            // a newer glide took over
+    let prev = viewer.rotationGroup.position.z, stable = 0;
+    setTimeout(function check(){
+      if (token !== camToken) return;
+      const z = viewer.rotationGroup.position.z;
+      if (Math.abs(z - prev) < 0.01) {
+        if (++stable < 2) { setTimeout(check, 60); return; }   // two quiet reads in a row
+        viewer.zoom(view === 'pocket' ? 1.6 : 0.85, 450);      // …then ease to the view's distance
+        setTimeout(() => {
+          if (token !== camToken) return;
+          gliding = false;
+          if (spinning) viewer.spin('y', 0.5);   // resume spin only after the camera settles
+        }, 470);
+      } else { stable = 0; prev = z; setTimeout(check, 50); }  // still moving — keep watching
+    }, 60);
+  }, 600);
+}
+
+function drawScene(glide){
   viewer.removeAllModels();
   viewer.removeAllLabels();
   viewer.removeAllShapes();
@@ -1471,10 +1496,9 @@ function drawScene(){
     setInfo(`<span class="tag plain">${atom.resn} ${atom.resi}</span>` + (atom.resn === 'HEM' ? '<span class="muted">Heme: the iron ring that binds oxygen.</span>' : (DESC[atom.resi] ? DESC[atom.resi] : (letter ? 'Residue ' + letter + ' at DB ' + db + '.' : ''))));
     drawScene();
   });
-  viewer.zoomTo({resn: 'HEM'});
-  viewer.zoom(view === 'pocket' ? 1.6 : 0.85);
+  if (glide) glideCamera();
   viewer.render();
-  viewer.spin(spinning ? 'y' : false, 0.5);
+  if (!glide && !gliding) viewer.spin(spinning ? 'y' : false, 0.5);
 }
 
 function initViewer(){
@@ -1484,7 +1508,7 @@ function initViewer(){
   }
   document.getElementById('viewer-msg').remove();
   viewer = $3Dmol.createViewer(document.getElementById('viewer'), {backgroundColor: '#0b1220'});
-  drawScene();
+  drawScene(true);
   setStep(1);
   setInfo('<span class="muted">Hover a residue to see its name. Click one to inspect it. The pink histidines are the two that matter most for oxygen: one anchors the heme, the other sits on the oxygen side.</span>');
 }
@@ -1493,7 +1517,7 @@ function setView(v){
   view = v;
   document.getElementById('btn-pocket').classList.toggle('on', v === 'pocket');
   document.getElementById('btn-whole').classList.toggle('on', v === 'whole');
-  if (viewer) drawScene();
+  if (viewer) drawScene(true);
 }
 function toggleSpin(){
   spinning = !spinning;
