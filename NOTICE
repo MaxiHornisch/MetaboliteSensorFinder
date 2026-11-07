@@ -1,0 +1,29 @@
+MetaboliteSensorFinder
+Copyright 2026 The MetaboliteSensorFinder contributors
+
+This product includes software developed at the Claude Impact Lab Berlin 2026,
+co-hosted by Foresight Institute (https://foresight.org/), and is donated as open source.
+
+Code in this repository is licensed under the Apache License, Version 2.0 (see LICENSE).
+Written material -- problem descriptions, documentation, results summaries -- is licensed
+under Creative Commons Attribution 4.0 International (see LICENSE-CC-BY-4.0).
+
+THIRD-PARTY DATA
+
+This repository commits three tables derived from third-party sources rather than the
+databases themselves: Test_sequences.csv and metabolite_binding_sequences_human.csv
+are derived from UniProt (CC BY 4.0) and InterPro (CC0), and
+Test_set_metabolite_SIMLES.xlsx carries ChEMBL identifiers (CC BY-SA 3.0). Attribution
+for these sources is given in README.md, under "About the data".
+
+A per-source survey of licences, provenance and redistribution verdicts
+(docs/06-DATA-SOURCES.md) lives on the scaffold/initial-documentation branch. Sources
+fetched at runtime carry their own terms. Users are responsible for complying with the
+license of each data source they fetch.
+
+SCIENTIFIC DISCLAIMER
+
+Nothing produced by this software has been experimentally validated. Its outputs are
+prioritised, falsified hypotheses with stated confidence, intended to inform experimental
+planning. They are not evidence of a protein-ligand interaction, and they must not be used
+as a basis for any clinical or diagnostic decision.

@@ -139,12 +139,12 @@ further design prose.
 
 ## License
 
-As declared in SUBMISSION.md, the intended open-source donation is: **code under the
-Apache License, Version 2.0**, and **written material under Creative Commons
-Attribution 4.0 International (CC BY 4.0)**. The `LICENSE`, `LICENSE-CC-BY-4.0` and
-`NOTICE` files exist on the `scaffold/initial-documentation` branch but are not yet
-present on `main`; until they land here, this branch carries no license grant. Bringing
-them over is a pending task.
+Code in this repository is licensed under the **Apache License, Version 2.0** — see
+[LICENSE](LICENSE). Written material (problem descriptions, documentation, results
+summaries) is licensed under **Creative Commons Attribution 4.0 International
+(CC BY 4.0)** — see [LICENSE-CC-BY-4.0](LICENSE-CC-BY-4.0). [NOTICE](NOTICE) records
+the attribution, the terms covering the committed third-party-derived tables, and the
+scientific disclaimer.
 
 ## If it works
 
