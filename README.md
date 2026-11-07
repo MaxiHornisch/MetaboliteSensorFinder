@@ -55,7 +55,8 @@ The rules around the pipeline matter as much as the pipeline itself:
   large run, with sign-off in between.
 
 Everything above is encoded in the agent definition; see
-[Status](#status-designed-not-yet-run) for what has actually been executed so far.
+[Status](#status-two-stages-executed-no-result-yet) for what has actually been executed
+so far.
 
 ## Repository contents
 
@@ -92,18 +93,44 @@ Provenance: the tables are derived from [UniProt](https://www.uniprot.org)
 identifiers reference ChEBI and ChEMBL (ChEMBL IDs, CC BY-SA 3.0). These sources are
 named here so the committed derivatives carry the attribution their licenses require.
 
-## Status: designed, not yet run
+## Status: two stages executed, no result yet
 
-The agent, the funnel and the reporting rules exist as specification. **No screen has
-been run end to end yet.** This branch contains no score tables, no docked poses and no
-run logs — the outputs described in SUBMISSION.md are *intended* outputs, not artifacts
-that exist today. Nothing here has been experimentally validated either; everything the
-funnel would produce is a prioritised hypothesis, not evidence of a binding interaction.
+**Executed.** On the `feature/sequence-channels-console` branch, the first two funnel
+stages run as working, sequence-based channels — the same two stages the agent
+definition specifies, in the same order:
 
-What a first real run needs, in order:
+- **bindPredict** — per-residue pocket reliability indices and class calls for a
+  candidate protein sequence, read from local output files. The pocket channel
+  currently covers five candidates with precomputed embeddings.
+- **PSICHIC** — ligand affinity plus agonist/antagonist/non-binder classification for a
+  sequence against ligand SMILES, scored on request (about nine seconds per call on
+  CPU), with no limit on input sequences.
+
+Each tool runs in its own pinned environment — their requirements are incompatible, so
+they meet only at a subprocess boundary. `scripts/doctor.py` checks that everything a
+tier needs is ready before anything downstream is trusted, and the Deorphan console
+(`tools/msf-console/`) puts both channels behind a local web UI and API. Every response
+carries its contamination warrant, so a score cannot be read without its provenance
+block.
+
+**The testing approach.** The channels are exercised with sequences and ligands whose
+behaviour is already known: screen a candidate with known binding through the console
+and compare the returned affinity and class call against what is already known, before
+trusting either channel on an orphan. The benchmark design applies the same discipline
+at scale — near-trivial homology pairs are recovered as a sanity check and reported
+separately, never counted as an achievement.
+
+**Not yet run.** The third stage — docking — has not been executed, the run ledger
+(`runs/INDEX.md` on that branch) has no rows, and no score table has been committed
+against the 8,685-pair yardstick with a baseline. This `main` branch still carries no
+score tables, docked poses or run logs of its own — the outputs described in
+SUBMISSION.md are *intended* outputs. Nothing has been experimentally validated;
+everything here is a prioritised hypothesis, not evidence of a binding interaction.
+
+What a first complete result needs, in order:
 
 1. a metabolite library at the intended scale — the committed pilot has two ligands;
-2. working, version-pinned environments for bindPredict, PSICHIC and DiffDock;
+2. stage 3 (docking) pinned and running alongside the two channels that already work;
 3. a committed pilot run: stage-1 scores for all 413 domains, stage-2 scores for the
    survivors, at least one docked pose, and the measured cost per domain;
 4. a scored evaluation against the committed 8,685-pair table — recall at a stated
@@ -122,20 +149,29 @@ further design prose.
   load needs an internet connection. No build step.
 - **The agent** — runs inside Claude Code: the definition in `.claude/agents/` is
   invoked in a session with the three data files as inputs.
-- **The screen itself** — not yet reproducible from this repository. An end-to-end run
-  additionally requires the three tool environments and a ligand library, and no run
-  has been committed to reproduce. Closing this gap is the first item under
-  [Status](#status-designed-not-yet-run).
+- **The two executed channels** — on `feature/sequence-channels-console`, run
+  `python3 tools/msf-console/server.py 8420` from the repository root and open
+  `http://127.0.0.1:8420`. The console needs only the Python standard library; the
+  channels need their own tool environments, and `scripts/doctor.py` reports which are
+  ready.
+- **The full screen** — not yet reproducible end to end: stage 3 and the benchmark have
+  not been executed, and no run has been committed to reproduce. See
+  [Status](#status-two-stages-executed-no-result-yet).
 
 ## Branches
 
-- **`main`** — the submission branch: agent definition, input tables and the
-  presentation materials.
+- **`main`** — the submission branch: agent definition, input tables, presentation
+  materials and license files.
+- **`feature/sequence-channels-console`** — the executed-channels branch: the first two
+  funnel stages, bindPredict and PSICHIC, running as sequence-based channels behind a
+  local Deorphan console, with doctor checks for tool readiness.
 - **`scaffold/initial-documentation`** — an extended parallel line of work: a Python
   package with a CLI and tests, an experiment journal, task and decision records,
   research of the data sources with per-source licensing, provenance and
-  redistribution verdicts, and the license files. Its pipeline workers are simulated;
-  the two branches have not been reconciled.
+  redistribution verdicts, and the license files. Its pipeline workers are simulated.
+
+The two remote branches share a common scaffold root; neither has been merged into
+`main`.
 
 ## License
 
