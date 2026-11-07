@@ -40,9 +40,12 @@
   .big.blue { color: var(--blue); }
   .label { font-size: 17px; color: var(--muted); margin-top: 10px; max-width: 28ch; }
   .tiles { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; width: min(100%, 400px); }
-  .tile { aspect-ratio: 1; border-radius: 5px; background: var(--teal-soft); border: 1px solid #b6e2da; opacity: 0; transform: scale(.6); transition: opacity .35s, transform .35s, background .35s; }
+  .tile { aspect-ratio: 1; border-radius: 5px; background: #e4eaf2; border: 1px solid #cdd7e3; opacity: 0; transform: scale(.6); transition: opacity .35s, transform .35s, background .35s; }
   .slide.active .tile { opacity: 1; transform: none; transition-delay: calc(var(--i) * 12ms); }
-  .tile.dark { background: var(--rose-soft); border-color: #e7b9c9; }
+  .tile.dark { background: #e0557a; border-color: #c93f66; }
+  .pbar { display: flex; height: 16px; border-radius: 8px; overflow: hidden; margin-top: 18px; max-width: 420px; }
+  .pbar span { display: block; height: 100%; }
+  .pbar-lbl { display: flex; justify-content: space-between; max-width: 420px; font-size: 14px; font-weight: 700; margin-top: 6px; color: var(--muted); }
   .legend { display: flex; gap: 18px; font-size: 15px; color: var(--muted); margin-top: 12px; }
   .sw { display: inline-block; width: 13px; height: 13px; border-radius: 3px; margin-right: 7px; vertical-align: -2px; }
   .viewer { width: 100%; height: min(52vh, 440px); border-radius: 18px; background: #f7fafc; border: 1px solid var(--line); position: relative; overflow: hidden; }
@@ -52,19 +55,27 @@
   .callout .dotc { width: 14px; height: 14px; border-radius: 50%; margin-top: 6px; flex: 0 0 14px; }
   .callout b { font-size: 18px; }
   .callout p { margin: 2px 0 0; font-size: 16px; }
-  .stage-lock { position: relative; height: min(46vh, 360px); margin-top: 18px; background: var(--wash); border-radius: 18px; border: 1px solid var(--line); overflow: hidden; }
-  .pocket { position: absolute; left: 50%; top: 50%; width: 170px; height: 170px; margin: -85px 0 0 -85px; border-radius: 50%; background: var(--teal-soft); border: 4px solid var(--teal); }
-  .pocket::after { content: "protein pocket"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--teal); font-weight: 700; font-size: 15px; }
-  .molecule { position: absolute; top: 50%; left: 8%; width: 64px; height: 64px; margin-top: -32px; border-radius: 50%; background: var(--amber); border: 4px solid #b8700f; color: #fff; font-weight: 800; display: grid; place-items: center; font-size: 15px; }
-  .slide.active .molecule { animation: dock 2.6s ease-in-out infinite; }
-  @keyframes dock {
-    0% { left: 8%; opacity: 1; }
-    15% { opacity: 1; }
-    55%, 100% { left: calc(50% - 32px); opacity: 1; }
-  }
-  .bound { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); background: #fff; border: 2px solid var(--teal); color: var(--teal); font-weight: 800; padding: 6px 14px; border-radius: 999px; font-size: 15px; opacity: 0; }
-  .slide.active .bound { animation: show 2.6s ease-in-out infinite; }
-  @keyframes show { 0%, 55% { opacity: 0; } 70%, 100% { opacity: 1; } }
+  .stage-lock { flex-shrink: 0; margin-top: 12px; background: var(--wash); border-radius: 18px; border: 1px solid var(--line); overflow: hidden; }
+  .stage-lock svg { display: block; width: 100%; max-width: 520px; height: auto; margin: 0 auto; }
+  .slide.active .scene { animation: scene 8s linear infinite; }
+  @keyframes scene { 0% { opacity: 0; } 4% { opacity: 1; } 90% { opacity: 1; } 100% { opacity: 0; } }
+  .slide.active .heme-wrap { animation: heme-in 8s ease-in-out infinite; }
+  @keyframes heme-in { 0% { transform: translate(340px, 0); opacity: 0; } 8% { opacity: 1; } 30%, 100% { transform: translate(0, 0); opacity: 1; } }
+  .slide.active .o2-wrap { animation: o2-in 8s ease-in-out infinite; }
+  @keyframes o2-in { 0%, 34% { transform: translate(260px, -60px); opacity: 0; } 38% { opacity: 1; } 56%, 100% { transform: translate(0, 0); opacity: 1; } }
+  .slide.active .hb { animation: hb-in 8s steps(1) infinite; }
+  @keyframes hb-in { 0%, 58% { opacity: 0; } 64%, 100% { opacity: 1; } }
+  .slide.active .fe { transform-box: fill-box; transform-origin: center; animation: fe-pulse 8s infinite; }
+  @keyframes fe-pulse { 0%, 56% { transform: scale(1); } 62% { transform: scale(1.3); } 70%, 100% { transform: scale(1); } }
+  .slide.active .outline { animation: outline 8s infinite; }
+  @keyframes outline { 0%, 28% { stroke: #0f8b7d; stroke-width: 2.5; } 60%, 100% { stroke: #d98a1c; stroke-width: 4; } }
+  .step-card { transition: border-color .3s, box-shadow .3s; }
+  .slide.active .c1 { animation: hi1 8s infinite; }
+  .slide.active .c2 { animation: hi2 8s infinite; }
+  .slide.active .c3 { animation: hi3 8s infinite; }
+  @keyframes hi1 { 0%, 30% { border-color: #d98a1c; box-shadow: 0 0 0 3px #fbeedb; } 36%, 100% { border-color: var(--line); box-shadow: none; } }
+  @keyframes hi2 { 0%, 34% { border-color: var(--line); box-shadow: none; } 38%, 58% { border-color: #d98a1c; box-shadow: 0 0 0 3px #fbeedb; } 64%, 100% { border-color: var(--line); box-shadow: none; } }
+  @keyframes hi3 { 0%, 62% { border-color: var(--line); box-shadow: none; } 66%, 100% { border-color: #d98a1c; box-shadow: 0 0 0 3px #fbeedb; } }
   .bars { margin-top: 24px; display: grid; gap: 18px; max-width: 780px; }
   .bar-row { display: grid; grid-template-columns: 200px 1fr 130px; align-items: center; gap: 14px; font-size: 18px; }
   .bar-track { height: 40px; background: var(--wash); border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
@@ -136,15 +147,17 @@
       <h2>More than one in four human genes has no known job.</h2>
       <div class="row cols2" style="margin-top:12px">
         <div>
-          <div class="big" data-count="27.8" data-dec="1">0%</div>
-          <div class="label">of human protein-coding genes are "dark": little or nothing is known about what they do</div>
+          <div class="big rose" data-count="27.8" data-dec="1">0%</div>
+          <div class="label"><b style="color:var(--rose)">Unknown</b>: protein-coding genes with little or no known function</div>
+          <div class="pbar"><span style="width:27.8%;background:var(--rose)"></span><span style="width:72.2%;background:#e4eaf2"></span></div>
+          <div class="pbar-lbl"><span style="color:var(--rose)">27.8% unknown</span><span>72.2% known</span></div>
           <p class="small">5,679 of 20,412 genes · Pharos (NIH), 2026</p>
         </div>
         <div>
           <div class="tiles" id="tiles"></div>
           <div class="legend">
-            <span><span class="sw" style="background:var(--teal-soft);border:1px solid #b6e2da"></span>Known</span>
-            <span><span class="sw" style="background:var(--rose-soft);border:1px solid #e7b9c9"></span>Dark</span>
+            <span><span class="sw" style="background:#e4eaf2;border:1px solid #cdd7e3"></span>Known (72.2%)</span>
+            <span><span class="sw" style="background:var(--rose)"></span>Unknown (27.8%)</span>
             <span>1 square ≈ 200 genes</span>
           </div>
         </div>
@@ -185,15 +198,11 @@
     <section class="slide">
       <div class="eyebrow">How binding works</div>
       <h2>A molecule that fits the pocket sticks. That is binding.</h2>
-      <div class="stage-lock">
-        <div class="pocket"></div>
-        <div class="molecule">M</div>
-        <div class="bound">BOUND</div>
-      </div>
-      <div class="row cols3" style="margin-top:6px">
-        <div class="card"><h3>1 · Fit</h3><p>Shape and size decide which molecule can enter.</p></div>
-        <div class="card"><h3>2 · Stick</h3><p>Charges and bonds hold it in place.</p></div>
-        <div class="card"><h3>3 · Use</h3><p>A bound molecule can trigger a signal: the basis of a sensor.</p></div>
+      <div class="stage-lock"><svg id="lock-svg" viewBox="0 0 900 360" role="img" aria-label="Animation: the heme molecule fits the protein pocket, oxygen docks on the iron, and histidines hold it in place"></svg></div>
+      <div class="row cols3" style="margin-top:14px">
+        <div class="card step-card c1"><h3>1 · Fit</h3><p>The heme shape matches the pocket. Only the right shape enters.</p></div>
+        <div class="card step-card c2"><h3>2 · Stick</h3><p>Oxygen docks on the iron. Histidine side chains hold it in place.</p></div>
+        <div class="card step-card c3"><h3>3 · Held</h3><p>The bound molecule stays put. A sensor works by detecting this step.</p></div>
       </div>
     </section>
 
@@ -1544,6 +1553,67 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Home') go(0);
   if (e.key === 'End') go(slides.length - 1);
 });
+function lobes(s){
+  let o = '';
+  for (let k = 0; k < 4; k++) {
+    const a = (-90 + 90 * k) * Math.PI / 180;
+    const cx = Math.cos(a) * 34 * s, cy = Math.sin(a) * 34 * s;
+    const p = [];
+    for (let j = 0; j < 5; j++) {
+      const b = (-90 + 90 * k + 72 * j) * Math.PI / 180;
+      p.push((cx + 24 * s * Math.cos(b)).toFixed(1) + ',' + (cy + 24 * s * Math.sin(b)).toFixed(1));
+    }
+    o += '<polygon points="' + p.join(' ') + '"/>';
+  }
+  return o;
+}
+function buildLock(){
+  const svg = document.getElementById('lock-svg');
+  if (!svg) return;
+  const CX = 430, CY = 180, PX = 500, PY = 180;
+  const pts = [];
+  for (let d = 0; d <= 360; d += 2) {
+    const t = d * Math.PI / 180;
+    const r = 148 + 12 * Math.sin(3 * t) + 7 * Math.cos(5 * t + 1);
+    pts.push((CX + r * Math.cos(t)).toFixed(1) + ',' + (CY + r * Math.sin(t)).toFixed(1));
+  }
+  const blob = 'M' + pts.join(' L') + ' Z';
+  let sides = '';
+  for (let k = 0; k < 4; k++) {
+    const a = (45 + 90 * k) * Math.PI / 180;
+    sides += '<circle cx="' + (Math.cos(a) * 66).toFixed(1) + '" cy="' + (Math.sin(a) * 66).toFixed(1) + '" r="6" fill="#f3d9a4" stroke="#b8700f" stroke-width="1.5"/>';
+  }
+  svg.innerHTML =
+    '<defs>' +
+      '<linearGradient id="pg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e3f6f2"/><stop offset="1" stop-color="#8fd3c8"/></linearGradient>' +
+      '<mask id="pocketMask"><rect width="900" height="360" fill="#fff"/><g transform="translate(' + PX + ',' + PY + ')" fill="#000">' + lobes(1.2) + '<circle r="13"/></g></mask>' +
+    '</defs>' +
+    '<g class="scene">' +
+      '<path d="' + blob + '" fill="url(#pg)" stroke="#0f8b7d" stroke-width="2" mask="url(#pocketMask)"/>' +
+      '<g transform="translate(' + PX + ',' + PY + ')"><g class="outline" fill="none" stroke-dasharray="5 4" stroke-width="2.5">' + lobes(1.2) + '</g></g>' +
+      '<g transform="translate(458,112) rotate(-35)"><rect x="-12" y="-6" width="24" height="12" rx="6" fill="#e879f9" stroke="#a21caf" stroke-width="1.5"/></g>' +
+      '<text x="418" y="98" font-size="12" font-weight="700" fill="#a21caf">His58</text>' +
+      '<line class="hb" x1="468" y1="117" x2="489" y2="140" stroke="#334155" stroke-width="2" stroke-dasharray="4 3"/>' +
+      '<line x1="' + PX + '" y1="250" x2="' + PX + '" y2="190" stroke="#334155" stroke-width="2"/>' +
+      '<g transform="translate(' + PX + ',262)"><rect x="-12" y="-6" width="24" height="12" rx="6" fill="#e879f9" stroke="#a21caf" stroke-width="1.5"/></g>' +
+      '<text x="' + (PX + 18) + '" y="266" font-size="12" font-weight="700" fill="#a21caf">His87</text>' +
+      '<g transform="translate(' + PX + ',' + PY + ')">' +
+        '<g class="heme-wrap">' +
+          '<g fill="#f6ad55" stroke="#b8700f" stroke-width="2">' + lobes(1) + '</g>' + sides +
+          '<g class="fe"><circle r="9" fill="#d98a1c" stroke="#7a3f0a" stroke-width="2"/><text y="3.5" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">Fe</text></g>' +
+          '<text y="-84" text-anchor="middle" font-size="14" font-weight="700" fill="#b8700f">heme</text>' +
+        '</g>' +
+      '</g>' +
+      '<g transform="translate(' + PX + ',' + (PY - 42) + ')"><g class="o2-wrap">' +
+        '<rect x="-9" y="-3" width="18" height="6" fill="#60a5fa"/>' +
+        '<circle cx="-9" r="7" fill="#60a5fa" stroke="#2f6fd6" stroke-width="2"/>' +
+        '<circle cx="9" r="7" fill="#60a5fa" stroke="#2f6fd6" stroke-width="2"/>' +
+        '<text y="-14" text-anchor="middle" font-size="13" font-weight="700" fill="#2f6fd6">O₂</text>' +
+      '</g></g>' +
+      '<g class="hb"><rect x="700" y="160" width="110" height="36" rx="18" fill="#fff" stroke="#0f8b7d" stroke-width="2.5"/><text x="755" y="184" text-anchor="middle" font-size="15" font-weight="800" fill="#0f8b7d">BOUND</text></g>' +
+    '</g>';
+}
+buildLock();
 const start = parseInt(location.hash.slice(1), 10);
 go(isNaN(start) ? 0 : start - 1);
 </script>

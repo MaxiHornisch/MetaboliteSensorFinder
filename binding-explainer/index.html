@@ -34,8 +34,9 @@
   /* Blind spot */
   .blind { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: center; margin-top: 18px; }
   .tiles { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; }
-  .tile { aspect-ratio: 1; border-radius: 4px; background: var(--teal); opacity: .85; transition: background .4s, transform .2s; }
-  .tile.dark { background: var(--dark); border: 1px dashed #4b5a7d; opacity: 1; }
+  .tile { aspect-ratio: 1; border-radius: 4px; background: #2a3a58; opacity: .9; transition: background .4s, transform .2s; }
+  .tile.dark { background: #e0557a; border: 1px solid #f08aa5; opacity: 1; }
+  #blind-big { color: #e0557a; }
   .tile:hover { transform: scale(1.12); }
   .big { font-size: 46px; font-weight: 750; line-height: 1; }
   .big small { font-size: 18px; color: var(--muted); font-weight: 500; }
@@ -111,8 +112,8 @@
     <div>
       <div class="tiles" id="tiles" aria-label="Grid of 100 squares, each about 1% of human protein-coding genes"></div>
       <div class="legend">
-        <span><span class="sw" style="background:var(--teal)"></span>Characterized</span>
-        <span><span class="sw" style="background:var(--dark)"></span>Tdark, uncharacterized</span>
+        <span><span class="sw" style="background:#2a3a58"></span>Known (72.2%)</span>
+        <span><span class="sw" style="background:#e0557a"></span>Unknown (27.8%)</span>
       </div>
       <p class="muted" style="font-size:13px">Each square is 1% of 20,412 genes, about 204 genes.</p>
     </div>
